@@ -93,6 +93,8 @@ def _get_permissions(role: str) -> set[tuple[str, str]]:
 
 def has_permission(role: str, module: str, action: str) -> bool:
     """Return True if `role` is allowed to perform `action` on `module`."""
+    if role == "admin":
+        return True
     return (module, action) in _get_permissions(role)
 
 
