@@ -337,6 +337,36 @@ def seed():
 
     conn.commit()
 
+    # ── Manual & extra refunds (all statuses) ─────────────────────────────────
+    extra_refunds = [
+        # (order_id, customer_id, customer_phone, order_amount, amount, method, refund_type, coupon, notes, status, return_id)
+        ("ORD-20410", "C001", "+91 98110 12345", 1499.0, 924.0,  "wallet",        "return_app",        None,     "Customer confirmed return.", "pending_approval", None),
+        ("ORD-20552", "C002", "+91 97300 54321", 2499.0, 1099.0, "source_refund", "return_app",        None,     "Exchange declined by customer.", "pending_approval", None),
+        ("ORD-20613", "C003", "+91 99990 11223",  899.0,  699.0, "cod_wallet",    "return_app",        None,     "COD order — wallet credit.", "pending_approval", None),
+        ("ORD-20784", "C004", "+91 98765 43210", 7995.0, 3486.0, "wallet",        "admin_panel",       "BABY20", "Initiated via admin.", "pending", None),
+        ("ORD-20830", "C005", "+91 98001 67890", 1499.0,  766.0, "source_refund", "chatbot",           None,     "Chatbot initiated refund.", "pending", None),
+        ("ORD-20121", "C006", "+91 97112 34567",  396.0,  332.0, "wallet",        "return_app",        None,     None, "pending", None),
+        ("ORD-20234", "C007", "+91 98200 11111",  899.0,  699.0, "source_refund", "tnb",               None,     "T&B refund.", "processed", None),
+        ("ORD-20345", "C008", "+91 99887 66554", 2799.0, 2799.0, "wallet",        "oos",               None,     "Item OOS — full refund.", "processed", None),
+        ("ORD-20456", "C001", "+91 98110 12345", 1499.0,  924.0, "wallet",        "cancelled_prepaid", None,     "Order cancelled before dispatch.", "completed", None),
+        ("ORD-20567", "C002", "+91 97300 54321",  229.0,  229.0, "cod_wallet",    "manual",            None,     "Manual goodwill refund.", "completed", None),
+        ("ORD-20678", "C003", "+91 99990 11223",  399.0,  398.0, "wallet",        "return_app",        None,     "Rejected: duplicate request.", "failed", None),
+        ("ORD-20789", "C004", "+91 98765 43210", 1099.0, 1099.0, "source_refund", "admin_panel",       None,     "Rejected: no valid reason.", "failed", None),
+    ]
+    for (oid, cid, phone, ord_amt, amt, method, rtype, coupon, notes, status, ret_id) in extra_refunds:
+        completed_at = random_dt(3) if status == "completed" else None
+        conn.execute(
+            """INSERT INTO refunds
+               (order_id, customer_id, customer_phone, order_amount, amount,
+                method, refund_type, coupon_code, notes, status,
+                triggered_at, completed_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (oid, cid, phone, ord_amt, amt, method, rtype, coupon, notes, status,
+             random_dt(7), completed_at)
+        )
+        refunds_inserted += 1
+    conn.commit()
+
     # ── CRM Calls ─────────────────────────────────────────────────────────────
     crm_order_num = 30000
 

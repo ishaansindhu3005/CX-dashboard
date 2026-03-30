@@ -411,8 +411,18 @@ def _render_tab(status_key, role):
         st.info("No returns match these filters.")
         return
 
-    h = st.columns([0.7, 1.1, 1.5, 1.0, 1.0, 0.6, 1.0, 1.1, 1.3, 0.7])
-    for col, label in zip(h, ["ID", "Order", "Customer", "Type", "Source", "Items", "Value", "Agent", "Created", ""]):
+    # pending_action: type is not yet set — hide it; show store + payment instead
+    is_pending_action = (status_key == "pending_action")
+
+    if is_pending_action:
+        COL_W  = [0.7, 1.1, 1.5, 1.1, 0.8, 0.6, 1.0, 1.0, 1.3, 0.6]
+        HDRS   = ["ID", "Order", "Customer", "Store", "Payment", "Items", "Value", "Agent", "Created", ""]
+    else:
+        COL_W  = [0.7, 1.1, 1.4, 0.9, 1.0, 0.8, 0.6, 1.0, 1.1, 1.3, 0.6]
+        HDRS   = ["ID", "Order", "Customer", "Type", "Store", "Payment", "Items", "Value", "Agent", "Created", ""]
+
+    h = st.columns(COL_W)
+    for col, label in zip(h, HDRS):
         col.markdown(f"**{label}**")
     st.markdown('<hr style="margin:2px 0 8px 0">', unsafe_allow_html=True)
 
@@ -421,19 +431,23 @@ def _render_tab(status_key, role):
         st.session_state[selected_key] = None
 
     for r in returns:
-        row = st.columns([0.7, 1.1, 1.5, 1.0, 1.0, 0.6, 1.0, 1.1, 1.3, 0.7])
-        row[0].write(f"RET-{r['id']:03d}")
-        row[1].write(r["order_id"])
-        row[2].write(r.get("customer_name") or r["customer_id"])
-        row[3].write(TYPE_BADGES.get(r["type"], r["type"]))
-        row[4].write(SOURCE_CHIPS.get(r["source"], r["source"]))
-        row[5].write(str(r["item_count"]))
-        row[6].write(f"₹{r['total_return_value']:,.0f}")
-        row[7].write(r.get("agent_name") or "—")
-        row[8].write(fmt_dt(r["created_at"])[:11])
+        row = st.columns(COL_W)
+        idx = 0
+        row[idx].write(f"RET-{r['id']:03d}");             idx += 1
+        row[idx].write(r["order_id"]);                     idx += 1
+        row[idx].write(r.get("customer_name") or r["customer_id"]); idx += 1
+        if not is_pending_action:
+            row[idx].write(TYPE_BADGES.get(r["type"], r["type"] or "—")); idx += 1
+        row[idx].write(r.get("store_name") or "—");        idx += 1
+        pay = r.get("payment_method") or "—"
+        row[idx].write("💳 Prepaid" if pay == "prepaid" else ("💵 COD" if pay == "cod" else pay)); idx += 1
+        row[idx].write(str(r["item_count"]));               idx += 1
+        row[idx].write(f"₹{r['total_return_value']:,.0f}"); idx += 1
+        row[idx].write(r.get("agent_name") or "—");        idx += 1
+        row[idx].write(fmt_dt(r["created_at"])[:11]);      idx += 1
 
         btn_label = "Close" if st.session_state[selected_key] == r["id"] else "Open"
-        if row[9].button(btn_label, key=f"btn_{r['id']}_{status_key}"):
+        if row[idx].button(btn_label, key=f"btn_{r['id']}_{status_key}"):
             st.session_state[selected_key] = None if st.session_state[selected_key] == r["id"] else r["id"]
             st.rerun()
 

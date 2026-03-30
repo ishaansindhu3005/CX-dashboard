@@ -251,8 +251,10 @@ def _render_tab(status_key):
         return
 
     # Header row
-    h = st.columns([0.7, 1.2, 1.5, 1.0, 1.2, 1.2, 1.4, 0.8])
-    for col, lbl in zip(h, ["ID", "Order", "Customer", "Amount", "Method", "Type", "Status", ""]):
+    COL_W = [0.6, 1.1, 1.3, 0.9, 1.0, 1.0, 1.1, 0.9, 1.3, 0.6]
+    HDRS  = ["ID", "Order", "Customer", "Ord Amt", "Refund", "Method", "Type", "Return?", "Status", ""]
+    h = st.columns(COL_W)
+    for col, lbl in zip(h, HDRS):
         col.markdown(f"**{lbl}**")
     st.markdown('<hr style="margin:2px 0 8px 0">', unsafe_allow_html=True)
 
@@ -261,17 +263,20 @@ def _render_tab(status_key):
         st.session_state[open_key] = None
 
     for r in refunds:
-        row = st.columns([0.7, 1.2, 1.5, 1.0, 1.2, 1.2, 1.4, 0.8])
+        row = st.columns(COL_W)
         row[0].write(f"REF-{r['id']:03d}")
         row[1].write(r["order_id"])
         row[2].write(r.get("customer_phone") or r["customer_id"])
-        row[3].write(f"₹{r['amount']:,.0f}")
-        row[4].write(method_pill(r["method"]))
+        ord_amt = r.get("order_amount")
+        row[3].write(f"₹{ord_amt:,.0f}" if ord_amt else "—")
+        row[4].write(f"₹{r['amount']:,.0f}")
+        row[5].write(method_pill(r["method"]))
         rtype = r.get("refund_type") or ""
-        row[5].write(REFUND_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title() if rtype else "—"))
-        row[6].markdown(status_badge(r["status"]), unsafe_allow_html=True)
+        row[6].write(REFUND_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title() if rtype else "—"))
+        row[7].write(f"RET-{r['return_id']:03d}" if r.get("return_id") else "—")
+        row[8].markdown(status_badge(r["status"]), unsafe_allow_html=True)
         btn_label = "Close" if st.session_state[open_key] == r["id"] else "Open"
-        if row[7].button(btn_label, key=f"open_{status_key}_{r['id']}"):
+        if row[9].button(btn_label, key=f"open_{status_key}_{r['id']}"):
             st.session_state[open_key] = None if st.session_state[open_key] == r["id"] else r["id"]
             st.rerun()
 
