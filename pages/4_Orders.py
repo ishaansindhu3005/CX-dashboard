@@ -31,7 +31,8 @@ ORDERS_COLS = [
 ]
 DETAILS_COLS = [
     "order_id", "item_name", "item_sku", "price", "quantity",
-    "is_return", "Return Amount",
+    "is_return", "Return Amount", "store_id", "Brand",
+    "SellingPriceX_Quantity", "discount_on_item", "is_rx",
 ]
 
 ORDER_STATUS_COLOURS = {
@@ -258,65 +259,109 @@ for _, row in page_df.iterrows():
     # ── Detail panel ──────────────────────────────────────────────────────────
     if st.session_state["order_selected"] == order_id:
         st.markdown("---")
-        left, right = st.columns([1.3, 0.7])
 
-        # Right — order info
-        with right:
-            st.markdown("#### 📋 Order Info")
-            st.markdown(f"**Order ID:** `{order_id}`")
-            st.markdown(f"**Phone:** {phone}")
-            st.markdown(f"**User ID:** {row.get('user_id', '—')}")
-            st.markdown(f"**Store:** {store}")
-            st.markdown(f"**Date:** {fmt_dt(created)}")
-            st.markdown(f"**Amount:** ₹{amount:,.0f}")
-            if coupon != "—":
-                disc = row.get("coupon_discount_amount", 0)
-                st.markdown(f"**Coupon:** `{coupon}` — ₹{disc:,.0f} off")
-            st.markdown(
-                f"**Status:** {pill(status.replace('_',' ').title(), ORDER_STATUS_COLOURS.get(status.lower(), '#64748b'))}",
-                unsafe_allow_html=True,
-            )
+        # ── Header row ────────────────────────────────────────────────────────
+        hd1, hd2, hd3, hd4, hd5, hd6, hd7 = st.columns([0.5, 1.2, 1.5, 1.2, 1.2, 1.5, 0.6])
+        if hd1.button("✕", key=f"close_ord_{order_id}"):
+            st.session_state["order_selected"] = None
+            st.rerun()
+        hd2.markdown(f"**Order #{order_id}**")
+        hd3.markdown(f"📞 `{phone}`")
+        hd4.markdown(f"🏪 {store}")
+        hd5.markdown(f"🗓 {fmt_dt(created)[:11]}")
+        hd6.markdown(
+            f"**₹{amount:,.0f}**" +
+            (f"  `{coupon}` −₹{row.get('coupon_discount_amount',0):,.0f}" if coupon != "—" else ""),
+        )
+        hd7.markdown(
+            pill(status.replace("_", " ").title(), ORDER_STATUS_COLOURS.get(status.lower(), "#64748b")),
+            unsafe_allow_html=True,
+        )
+
+        # ── Split order tabs (grouped by store_id) + CX actions ───────────────
+        order_items_all = details_df[details_df["order_id"] == order_id] if not details_df.empty else pd.DataFrame()
+
+        left_cx, right_items = st.columns([0.55, 1.45])
+
+        # ── RIGHT: split order tabs with items table ──────────────────────────
+        with right_items:
+            if not order_items_all.empty:
+                # Group by store_id if column exists, else treat as single group
+                if "store_id" in order_items_all.columns:
+                    store_ids = sorted(order_items_all["store_id"].dropna().unique().tolist())
+                else:
+                    store_ids = ["—"]
+
+                tab_labels = [f"{order_id} — Store {int(sid) if sid != '—' else '—'}" for sid in store_ids]
+                store_tabs = st.tabs(tab_labels)
+
+                for tab_obj, sid in zip(store_tabs, store_ids):
+                    with tab_obj:
+                        if "store_id" in order_items_all.columns and sid != "—":
+                            grp = order_items_all[order_items_all["store_id"] == sid]
+                        else:
+                            grp = order_items_all
+
+                        # Table header
+                        th = st.columns([0.35, 3.2, 1.3, 0.45, 0.85, 0.95, 0.9])
+                        for col, lbl in zip(th, ["#", "Item", "SKU", "Qty", "MRP", "Sell Price", "Status"]):
+                            col.markdown(f"<small><b>{lbl}</b></small>", unsafe_allow_html=True)
+                        st.markdown('<hr style="margin:2px 0 6px 0">', unsafe_allow_html=True)
+
+                        for i, (_, it) in enumerate(grp.iterrows(), 1):
+                            tr = st.columns([0.35, 3.2, 1.3, 0.45, 0.85, 0.95, 0.9])
+                            tr[0].write(str(i))
+                            brand = str(it.get("Brand", "") or "")
+                            name  = it["item_name"]
+                            tr[1].markdown(
+                                f"**{name}**" + (f"<br><small style='color:#64748b'>{brand}</small>" if brand else ""),
+                                unsafe_allow_html=True,
+                            )
+                            tr[2].markdown(f"`{it.get('item_sku', '—')}`")
+                            tr[3].write(str(int(it.get("quantity", 1))))
+                            tr[4].write(f"₹{it.get('price', 0):,.0f}")
+                            spxq = float(it.get("SellingPriceX_Quantity", 0) or 0)
+                            qty  = int(it.get("quantity", 1)) or 1
+                            sell = spxq / qty if spxq else float(it.get("price", 0))
+                            tr[5].write(f"₹{sell:,.0f}")
+                            is_ret_item = int(it.get("is_return", 0))
+                            is_rx       = int(it.get("is_rx", 0))
+                            if is_ret_item:
+                                tr[6].markdown(
+                                    '<span style="background:#c62828;color:#fff;padding:1px 7px;border-radius:10px;font-size:0.72rem">↩ Return</span>',
+                                    unsafe_allow_html=True,
+                                )
+                            elif is_rx:
+                                tr[6].markdown(
+                                    '<span style="background:#7c3aed;color:#fff;padding:1px 7px;border-radius:10px;font-size:0.72rem">Rx</span>',
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                tr[6].write("—")
+            else:
+                st.info("No item data available for this order.")
+
+        # ── LEFT: CX actions ──────────────────────────────────────────────────
+        with left_cx:
             nr = str(row.get("NEW_REPEAT", "—"))
-            st.markdown(f"**Customer Type:** {'🆕 New' if nr == 'NEW' else ('🔄 Repeat' if nr == 'REPEAT' else nr)}")
-            if int(row.get("is_try_and_buy", 0)):
-                st.markdown("**T&B:** Yes")
-            if is_ret:
-                st.markdown(f"**Return Amount (CSV):** ₹{row.get('return_amount', 0):,.0f}")
-
-            # Line items
-            if not details_df.empty:
-                order_items = details_df[details_df["order_id"] == order_id]
-                if not order_items.empty:
-                    st.markdown("---")
-                    st.markdown("**Items in this order**")
-                    for _, it in order_items.iterrows():
-                        ret_flag = " ↩" if int(it.get("is_return", 0)) else ""
-                        st.markdown(
-                            f"• **{it['item_name']}**  `{it.get('item_sku','—')}`  "
-                            f"×{int(it.get('quantity',1))}  ₹{it.get('price',0):,.0f}{ret_flag}"
-                        )
-
-        # Left — CX actions
-        with left:
-            c_close, c_title = st.columns([1, 6])
-            with c_close:
-                if st.button("✕", key=f"close_ord_{order_id}"):
-                    st.session_state["order_selected"] = None
-                    st.rerun()
-            with c_title:
-                st.markdown(f"#### Order #{order_id}")
+            tags = []
+            if nr == "NEW":    tags.append("🆕 New")
+            if nr == "REPEAT": tags.append("🔄 Repeat")
+            if int(row.get("is_try_and_buy", 0)): tags.append("🛍 T&B")
+            if tags:
+                st.markdown("  ".join(tags))
 
             existing_ret = check_return_exists(order_id)
 
             if existing_ret:
-                r_st     = existing_ret["status"]
+                r_st    = existing_ret["status"]
                 r_colour = RETURN_STATUS_COLOURS.get(r_st, "#444")
                 r_label  = RETURN_STATUS_LABELS.get(r_st, r_st)
                 st.markdown(
-                    f"**Return in system:** {pill(r_label, r_colour)}",
+                    f"**Return:** {pill(r_label, r_colour)}",
                     unsafe_allow_html=True,
                 )
-                st.caption("Go to Returns module to manage this return.")
+                st.caption("Go to Returns module to manage.")
 
             elif status.lower() == "delivered" and has_permission(role, "returns", "create"):
                 show_key = f"ret_form_{order_id}"
@@ -326,37 +371,29 @@ for _, row in page_df.iterrows():
                 if not st.session_state[show_key]:
                     if st.button("↩ Return Item(s)", key=f"init_ret_{order_id}", type="primary"):
                         st.session_state[show_key] = True
-                        st.session_state[f"ret_sel_{order_id}"] = []
                         st.rerun()
                 else:
-                    st.markdown("**Return Item(s)**")
+                    st.markdown("**Initiate Return**")
 
-                    # Item multi-select from OrderDetails CSV
-                    if not details_df.empty:
-                        order_items = details_df[details_df["order_id"] == order_id]
+                    if not order_items_all.empty:
                         item_options = {
-                            f"{it['item_name']} ({it.get('item_sku','—')}) — ₹{it.get('price',0):,.0f}": {
+                            f"{it['item_name']} — ₹{it.get('price',0):,.0f}": {
                                 "name": it["item_name"],
                                 "sku": str(it.get("item_sku", "")),
                                 "qty": int(it.get("quantity", 1)),
                                 "unit_price": float(it.get("price", 0)),
                                 "return_amount": float(it.get("Return Amount", it.get("price", 0))),
                             }
-                            for _, it in order_items.iterrows()
+                            for _, it in order_items_all.iterrows()
                         }
                     else:
                         item_options = {}
 
                     if item_options:
-                        sel_labels = st.multiselect(
-                            "Select items to return",
-                            list(item_options.keys()),
-                            key=f"ret_sel_{order_id}",
-                        )
+                        sel_labels     = st.multiselect("Select items *", list(item_options.keys()), key=f"ret_sel_{order_id}")
                         selected_items = [item_options[l] for l in sel_labels]
                     else:
-                        # Fallback: manual items if no OrderDetails CSV
-                        st.caption("No item data found — enter items manually.")
+                        st.caption("No item data — enter manually.")
                         if "ret_items" not in st.session_state:
                             st.session_state["ret_items"] = [{"name": "", "sku": "", "qty": 1, "unit_price": 0.0, "return_amount": 0.0}]
                         items_list = st.session_state["ret_items"]
@@ -364,11 +401,10 @@ for _, row in page_df.iterrows():
                         for i, item in enumerate(items_list):
                             ic1, ic2, ic3, ic4, ic5 = st.columns([2.5, 1.5, 0.6, 0.9, 0.5])
                             name = ic1.text_input("Name", value=item["name"], key=f"iname_{order_id}_{i}", label_visibility="collapsed", placeholder="Item name")
-                            sku  = ic2.text_input("SKU", value=item["sku"], key=f"isku_{order_id}_{i}", label_visibility="collapsed", placeholder="SKU")
+                            sku  = ic2.text_input("SKU",  value=item["sku"],  key=f"isku_{order_id}_{i}",  label_visibility="collapsed", placeholder="SKU")
                             qty  = ic3.number_input("Qty", value=item["qty"], min_value=1, key=f"iqty_{order_id}_{i}", label_visibility="collapsed")
                             up   = ic4.number_input("₹", value=float(item["unit_price"]), min_value=0.0, key=f"iprice_{order_id}_{i}", label_visibility="collapsed")
-                            rem  = ic5.button("✕", key=f"irem_{order_id}_{i}")
-                            if not rem:
+                            if not ic5.button("✕", key=f"irem_{order_id}_{i}"):
                                 updated.append({"name": name, "sku": sku, "qty": qty, "unit_price": up, "return_amount": up * qty})
                         if st.button("＋ Add Item", key=f"iadd_{order_id}"):
                             updated.append({"name": "", "sku": "", "qty": 1, "unit_price": 0.0, "return_amount": 0.0})
@@ -377,27 +413,27 @@ for _, row in page_df.iterrows():
 
                     if selected_items or not item_options:
                         st.markdown("---")
-                        ret_type = st.radio("Type", ["return", "exchange"], format_func=lambda x: x.title(), horizontal=True, key=f"rtype_{order_id}")
-                        payment  = st.radio("Payment", ["prepaid", "cod"], format_func=lambda x: x.upper(), horizontal=True, key=f"rpay_{order_id}")
-                        spoken   = st.radio("Spoken to customer?", SPOKEN_OPTIONS, format_func=lambda x: SPOKEN_LABELS[x], horizontal=True, key=f"rspoken_{order_id}")
-                        pitched  = st.radio("Pitched exchange?", PITCHED_OPTIONS, format_func=lambda x: PITCHED_LABELS[x], horizontal=True, key=f"rpitched_{order_id}", disabled=(ret_type == "exchange"))
-                        reason   = st.selectbox("Return reason", REASON_OPTIONS, format_func=lambda x: REASON_LABELS[x], key=f"rreason_{order_id}")
+                        ret_type = st.radio("Type *", ["return", "exchange"], format_func=lambda x: x.title(), horizontal=True, key=f"rtype_{order_id}")
+                        payment  = st.radio("Payment *", ["prepaid", "cod"], format_func=lambda x: x.upper(), horizontal=True, key=f"rpay_{order_id}")
+                        spoken   = st.radio("Spoken to customer? *", SPOKEN_OPTIONS, format_func=lambda x: SPOKEN_LABELS[x], horizontal=True, key=f"rspoken_{order_id}")
+                        pitched  = st.radio("Pitched exchange? *", PITCHED_OPTIONS, format_func=lambda x: PITCHED_LABELS[x], horizontal=True, key=f"rpitched_{order_id}")
+                        reason   = st.selectbox("Return reason *", REASON_OPTIONS, format_func=lambda x: REASON_LABELS[x], key=f"rreason_{order_id}")
                         if ret_type == "return":
-                            ref_opts = REFUND_SOURCE_OPTIONS.get(payment, ["wallet"])
-                            refund_src = st.selectbox("Refund source", ref_opts, format_func=lambda x: REFUND_SOURCE_LABELS[x], key=f"rrefsrc_{order_id}")
+                            ref_opts   = REFUND_SOURCE_OPTIONS.get(payment, ["wallet"])
+                            refund_src = st.selectbox("Refund source *", ref_opts, format_func=lambda x: REFUND_SOURCE_LABELS[x], key=f"rrefsrc_{order_id}")
                         else:
                             refund_src = None
-                            st.info("Exchange — no refund source required.")
-                        pickup_date = st.date_input("Pickup date", min_value=date.today(), key=f"rpdate_{order_id}")
-                        pickup_time = st.selectbox("Pickup time", TIME_SLOTS, key=f"rptime_{order_id}")
+                            st.info("Exchange — no refund source.")
+                        pickup_date = st.date_input("Pickup date *", min_value=date.today(), key=f"rpdate_{order_id}")
+                        pickup_time = st.selectbox("Pickup time *", TIME_SLOTS, key=f"rptime_{order_id}")
                         pickup_slot = f"{pickup_date.strftime('%d %b %Y')}, {pickup_time}"
-                        notes = st.text_area("Notes (optional)", height=70, key=f"rnotes_{order_id}")
+                        notes = st.text_area("Notes", height=60, key=f"rnotes_{order_id}")
 
-                        btn_c, btn_s = st.columns(2)
-                        if btn_c.button("Cancel", key=f"rcancel_{order_id}"):
+                        bc, bs = st.columns(2)
+                        if bc.button("Cancel", key=f"rcancel_{order_id}"):
                             st.session_state[show_key] = False
                             st.rerun()
-                        if btn_s.button("✓ Submit Return", key=f"rsubmit_{order_id}", type="primary"):
+                        if bs.button("✓ Submit", key=f"rsubmit_{order_id}", type="primary"):
                             items_to_use = selected_items if item_options else st.session_state.get("ret_items", [])
                             valid = [it for it in items_to_use if str(it.get("name", "")).strip()]
                             if not valid:
@@ -419,14 +455,13 @@ for _, row in page_df.iterrows():
                                     agent_id=user.get("id"),
                                     source="cx_portal",
                                 )
-                                st.success(f"Return RET-{new_id:03d} created — now in Pending Approval.")
+                                st.success(f"RET-{new_id:03d} → Pending Approval.")
                                 st.session_state[show_key] = False
                                 st.session_state.pop("ret_items", None)
                                 st.rerun()
+
             elif status.lower() != "delivered":
-                st.info("Returns can only be initiated for delivered orders.")
-            else:
-                st.info("No return exists for this order.")
+                st.info("Returns only for delivered orders.")
 
         st.markdown("---")
 
