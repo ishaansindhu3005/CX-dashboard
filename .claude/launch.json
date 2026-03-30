@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ozi-cx",
+      "runtimeExecutable": "streamlit",
+      "runtimeArgs": ["run", "app.py", "--server.port=${PORT}"],
+      "port": 8501,
+      "autoPort": true
+    }
+  ]
+}
