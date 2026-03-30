@@ -92,6 +92,8 @@ def load_order_details(path):
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _show_readonly_fields(ret):
+    if ret.get("type"):
+        st.markdown(f"**Type:** {TYPE_BADGES.get(ret['type'], ret['type'].title())}")
     if ret.get("spoken_to_customer"):
         st.markdown(f"**Spoken to customer:** {SPOKEN_LABELS.get(ret['spoken_to_customer'], ret['spoken_to_customer'])}")
     if ret.get("pitched_exchange"):
@@ -165,22 +167,21 @@ def _render_detail_panel(return_id, role, tab_key):
 
         if status == "pending_action" and role in ("agent", "cx_lead", "supervisor", "admin"):
             with st.form(key=f"agent_form_{return_id}"):
-                spoken  = st.selectbox("Spoken to customer?", SPOKEN_OPTIONS, format_func=lambda x: SPOKEN_LABELS[x])
-                pitched = st.selectbox("Pitched exchange?", PITCHED_OPTIONS, format_func=lambda x: PITCHED_LABELS[x], disabled=(ret["type"] == "exchange"))
-                reason  = st.selectbox("Return reason", REASON_OPTIONS, format_func=lambda x: REASON_LABELS[x])
-                payment = ret["payment_method"] or "prepaid"
-                if ret["type"] == "return":
-                    ref_opts   = REFUND_SOURCE_OPTIONS.get(payment, ["wallet"])
-                    refund_src = st.selectbox("Refund source", ref_opts, format_func=lambda x: REFUND_SOURCE_LABELS[x])
-                else:
-                    refund_src = None
-                    st.info("Exchange — no refund source required.")
-                pickup_date = st.date_input("Pickup date", min_value=date.today())
-                pickup_time = st.selectbox("Pickup time slot", TIME_SLOTS)
+                ret_type = st.radio("Type *", ["return", "exchange"], format_func=lambda x: x.title(), horizontal=True)
+                payment  = ret["payment_method"] or "prepaid"
+                spoken   = st.selectbox("Spoken to customer? *", SPOKEN_OPTIONS, format_func=lambda x: SPOKEN_LABELS[x])
+                pitched  = st.selectbox("Pitched exchange? *", PITCHED_OPTIONS, format_func=lambda x: PITCHED_LABELS[x])
+                reason   = st.selectbox("Return reason *", REASON_OPTIONS, format_func=lambda x: REASON_LABELS[x])
+                ref_opts   = REFUND_SOURCE_OPTIONS.get(payment, ["wallet"])
+                refund_src = st.selectbox("Refund source *", ref_opts, format_func=lambda x: REFUND_SOURCE_LABELS[x])
+                pickup_date = st.date_input("Pickup date *", min_value=date.today())
+                pickup_time = st.selectbox("Pickup time slot *", TIME_SLOTS)
                 pickup_slot = f"{pickup_date.strftime('%d %b %Y')}, {pickup_time}"
                 notes = st.text_area("Agent notes (optional)", height=80)
                 if st.form_submit_button("Submit for Approval →", type="primary"):
-                    agent_submit_return(return_id, spoken, pitched, reason, refund_src, pickup_slot, notes)
+                    agent_submit_return(return_id, ret_type, spoken, pitched, reason,
+                                        refund_src if ret_type == "return" else None,
+                                        pickup_slot, notes)
                     st.success("Submitted for approval!")
                     st.session_state[f"selected_{tab_key}"] = None
                     st.rerun()

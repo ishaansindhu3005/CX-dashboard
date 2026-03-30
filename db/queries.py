@@ -252,11 +252,12 @@ def get_return_counts():
     return {r["status"]: r["cnt"] for r in rows}
 
 
-def agent_submit_return(return_id, spoken, pitched, reason, refund_source, pickup_slot, notes):
+def agent_submit_return(return_id, ret_type, spoken, pitched, reason, refund_source, pickup_slot, notes):
     conn = get_conn()
     conn.execute(
         """
         UPDATE returns SET
+            type               = ?,
             spoken_to_customer = ?,
             pitched_exchange   = ?,
             reason             = ?,
@@ -267,7 +268,7 @@ def agent_submit_return(return_id, spoken, pitched, reason, refund_source, picku
             updated_at         = CURRENT_TIMESTAMP
         WHERE id = ?
         """,
-        (spoken, pitched, reason, refund_source, pickup_slot, notes, return_id)
+        (ret_type, spoken, pitched, reason, refund_source, pickup_slot, notes, return_id)
     )
     conn.commit()
     conn.close()

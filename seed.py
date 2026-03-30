@@ -65,18 +65,21 @@ TYPES    = ["return", "exchange"]
 ROLE_PERMISSIONS = [
     # agent
     ("agent", "dashboard",   "view"),
-    ("agent", "returns",     "view"),   ("agent", "returns",     "action"),
+    ("agent", "returns",     "view"),   ("agent", "returns",     "action"),  ("agent", "returns", "create"),
     ("agent", "refunds",     "view"),
     ("agent", "customers",   "view"),
+    ("agent", "orders",      "view"),
     ("agent", "crm_calling", "view"),   ("agent", "crm_calling", "call"),
     ("agent", "short_picks", "view"),   ("agent", "short_picks", "action"),
 
     # cx_lead
     ("cx_lead", "dashboard",   "view"),
     ("cx_lead", "returns",     "view"),   ("cx_lead", "returns",     "action"),
-    ("cx_lead", "returns",     "approve"),("cx_lead", "returns",     "reject"),
+    ("cx_lead", "returns",     "approve"),("cx_lead", "returns",     "reject"),  ("cx_lead", "returns", "create"),
     ("cx_lead", "refunds",     "view"),   ("cx_lead", "refunds",     "action"),
+    ("cx_lead", "refunds",     "approve"),("cx_lead", "refunds",     "create"),
     ("cx_lead", "customers",   "view"),
+    ("cx_lead", "orders",      "view"),
     ("cx_lead", "crm_calling", "view"),   ("cx_lead", "crm_calling", "call"),
     ("cx_lead", "short_picks", "view"),   ("cx_lead", "short_picks", "action"),
 
@@ -89,8 +92,9 @@ ROLE_PERMISSIONS = [
     # supervisor
     ("supervisor", "dashboard",   "view"),
     ("supervisor", "returns",     "view"),   ("supervisor", "returns",     "action"),
-    ("supervisor", "returns",     "approve"),("supervisor", "returns",     "reject"),
+    ("supervisor", "returns",     "approve"),("supervisor", "returns",     "reject"),  ("supervisor", "returns", "create"),
     ("supervisor", "refunds",     "view"),   ("supervisor", "refunds",     "action"),
+    ("supervisor", "refunds",     "approve"),("supervisor", "refunds",     "create"),
     ("supervisor", "customers",   "view"),
     ("supervisor", "orders",      "view"),
     ("supervisor", "crm_calling", "view"),   ("supervisor", "crm_calling", "call"),
@@ -102,8 +106,9 @@ ROLE_PERMISSIONS = [
     # admin
     ("admin", "dashboard",   "view"),
     ("admin", "returns",     "view"),   ("admin", "returns",     "action"),
-    ("admin", "returns",     "approve"),("admin", "returns",     "reject"),
+    ("admin", "returns",     "approve"),("admin", "returns",     "reject"),  ("admin", "returns", "create"),
     ("admin", "refunds",     "view"),   ("admin", "refunds",     "action"),
+    ("admin", "refunds",     "approve"),("admin", "refunds",     "create"),
     ("admin", "customers",   "view"),
     ("admin", "orders",      "view"),
     ("admin", "crm_calling", "view"),   ("admin", "crm_calling", "call"),
