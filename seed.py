@@ -108,7 +108,7 @@ ROLE_PERMISSIONS = [
     ("admin", "returns",     "view"),   ("admin", "returns",     "action"),
     ("admin", "returns",     "approve"),("admin", "returns",     "reject"),  ("admin", "returns", "create"),
     ("admin", "refunds",     "view"),   ("admin", "refunds",     "action"),
-    ("admin", "refunds",     "approve"),("admin", "refunds",     "create"),
+    ("admin", "refunds",     "approve"),("admin", "refunds",     "create"),  ("admin", "refunds", "override_amount"),
     ("admin", "customers",   "view"),
     ("admin", "orders",      "view"),
     ("admin", "crm_calling", "view"),   ("admin", "crm_calling", "call"),

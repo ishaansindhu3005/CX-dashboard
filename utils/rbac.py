@@ -50,7 +50,7 @@ _DEFAULTS: dict[str, list[tuple[str, str]]] = {
     "admin": [
         ("dashboard",    "view"),
         ("returns",      "view"), ("returns",      "action"), ("returns", "approve"), ("returns", "reject"), ("returns", "create"),
-        ("refunds",      "view"), ("refunds",      "action"), ("refunds", "approve"), ("refunds", "create"),
+        ("refunds",      "view"), ("refunds",      "action"), ("refunds", "approve"), ("refunds", "create"), ("refunds", "override_amount"),
         ("customers",    "view"),
         ("orders",       "view"),
         ("crm_calling",  "view"), ("crm_calling",  "call"),   ("crm_calling",  "reassign"),

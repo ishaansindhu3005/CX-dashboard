@@ -2,6 +2,7 @@ import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import pandas as pd
 from datetime import datetime, date
 from db.queries import (
     get_refunds, get_refund_counts, get_refund_by_id,
@@ -78,32 +79,94 @@ def method_pill(method):
     return METHOD_LABELS.get(method, method.replace("_", " ").title() if method else "—")
 
 
+# ── Orders CSV loader (for order lookup) ─────────────────────────────────────
+
+DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "data")
+ORDERS_CSV = os.path.join(DATA_DIR, "orders.csv")
+
+@st.cache_data(show_spinner=False)
+def _load_orders_lookup(path: str) -> pd.DataFrame:
+    available = pd.read_csv(path, nrows=0).columns.tolist()
+    want      = ["id", "user_id", "contact_person_number", "order_amount", "coupon_code"]
+    cols      = [c for c in want if c in available]
+    df        = pd.read_csv(path, usecols=cols, low_memory=False)
+    df["id"]  = df["id"].astype(str)
+    df["contact_person_number"] = df["contact_person_number"].astype(str)
+    df["order_amount"] = pd.to_numeric(df["order_amount"], errors="coerce").fillna(0)
+    return df
+
+
+def _lookup_order(order_id: str) -> dict | None:
+    if not os.path.exists(ORDERS_CSV):
+        return None
+    df  = _load_orders_lookup(ORDERS_CSV)
+    row = df[df["id"] == order_id.strip()]
+    if row.empty:
+        return None
+    r = row.iloc[0]
+    return {
+        "customer_id":    str(r.get("user_id", "")),
+        "customer_phone": str(r.get("contact_person_number", "")),
+        "order_amount":   float(r.get("order_amount", 0)),
+        "coupon_code":    str(r.get("coupon_code", "") or ""),
+    }
+
+
 # ── Manual refund form ────────────────────────────────────────────────────────
 
 def _render_manual_create():
     st.markdown("### ＋ Manual Refund")
+
+    can_override = has_permission(role, "refunds", "override_amount")
+
+    # Order ID lookup (outside form so it can trigger a lookup live)
+    order_id = st.text_input("Order ID *", key="mrf_order_id", placeholder="e.g. 2048844")
+    order_data = None
+    if order_id.strip():
+        order_data = _lookup_order(order_id.strip())
+        if order_data:
+            st.success(f"✓ Order found — Customer: `{order_data['customer_phone']}` | Amount: ₹{order_data['order_amount']:,.0f}")
+        else:
+            st.warning("Order not found in system. Check the Order ID.")
+
     with st.form("manual_refund_form", clear_on_submit=True):
+        # System-fetched fields (read-only display)
         c1, c2 = st.columns(2)
-        order_id      = c1.text_input("Order ID *")
-        customer_id   = c2.text_input("Customer ID")
-        customer_phone = c1.text_input("Customer Phone *")
-        order_amount  = c2.number_input("Order Amount (₹)", min_value=0.0, step=1.0)
-        amount        = c1.number_input("Refund Amount (₹) *", min_value=0.01, step=1.0)
-        method        = c2.selectbox("Refund Method *", ["wallet", "source_refund", "cod_wallet"],
-                                     format_func=lambda x: METHOD_LABELS.get(x, x))
-        refund_type   = c1.selectbox("Refund Type *",
-                                     list(REFUND_TYPE_LABELS.keys()),
-                                     format_func=lambda x: REFUND_TYPE_LABELS.get(x, x))
-        coupon_code   = c2.text_input("Coupon Code (if applicable)")
-        notes         = st.text_area("Notes")
+        c1.markdown("**Customer Phone**")
+        c1.code(order_data["customer_phone"] if order_data else "— enter Order ID above")
+        c2.markdown("**Customer ID**")
+        c2.code(order_data["customer_id"] if order_data else "—")
+
+        c3, c4 = st.columns(2)
+        c3.markdown("**Order Amount**")
+        c3.code(f"₹{order_data['order_amount']:,.2f}" if order_data else "—")
+
+        # Refund amount — system default = order amount; admin can override
+        sys_amount = order_data["order_amount"] if order_data else 0.0
+        if can_override:
+            amount = c4.number_input(
+                "Refund Amount (₹) — Admin Override",
+                min_value=0.01, value=max(sys_amount, 0.01), step=1.0,
+            )
+        else:
+            c4.markdown("**Refund Amount**")
+            c4.code(f"₹{sys_amount:,.2f}" if order_data else "—")
+            amount = sys_amount
+
+        st.markdown("---")
+        method      = st.selectbox("Refund Method *", ["wallet", "source_refund", "cod_wallet"],
+                                   format_func=lambda x: METHOD_LABELS.get(x, x))
+        refund_type = st.selectbox("Refund Type *", list(REFUND_TYPE_LABELS.keys()),
+                                   format_func=lambda x: REFUND_TYPE_LABELS.get(x, x))
+        notes       = st.text_area("Notes (optional)")
 
         submitted = st.form_submit_button("Submit for Approval", type="primary", use_container_width=True)
         if submitted:
             errors = []
             if not order_id.strip():
                 errors.append("Order ID is required.")
-            if not customer_phone.strip():
-                errors.append("Customer Phone is required.")
+            if not order_data:
+                errors.append("Order not found — cannot create refund.")
             if amount <= 0:
                 errors.append("Refund Amount must be > 0.")
             if errors:
@@ -112,13 +175,13 @@ def _render_manual_create():
             else:
                 rid = create_manual_refund(
                     order_id=order_id.strip(),
-                    customer_id=customer_id.strip() or order_id.strip(),
-                    customer_phone=customer_phone.strip(),
-                    order_amount=order_amount,
+                    customer_id=order_data["customer_id"],
+                    customer_phone=order_data["customer_phone"],
+                    order_amount=order_data["order_amount"],
                     amount=amount,
                     method=method,
                     refund_type=refund_type,
-                    coupon_code=coupon_code.strip() or None,
+                    coupon_code=order_data.get("coupon_code") or None,
                     notes=notes.strip() or None,
                 )
                 st.success(f"Refund REF-{rid:03d} submitted for approval.")
