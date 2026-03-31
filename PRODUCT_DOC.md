@@ -11,11 +11,11 @@
 
 ### 1. Operational Fragmentation
 
-Ozi's CX team manages all post-order customer issues across a patchwork of unconnected tools — WhatsApp groups, the Shopify Admin Panel, Pidge (delivery ops), Razorpay (payments), and a Google Sheet. Every return, refund, and retention call requires an agent to switch between 4–5 tabs with no single source of truth.
+Ozi's CX team manages all post-order customer issues across a patchwork of unconnected tools — WhatsApp groups, PhP Admin Panel, Pidge (delivery ops), Razorpay (payments), and a Google Sheet. Every return, refund, and retention call requires an agent to switch between 4–5 tabs with no single source of truth.
 
-- There is no audit trail on return approvals. When a return is approved verbally over WhatsApp, there is no record of who approved it, when, or why.
-- Agents have no real-time visibility into the status of a return after they hand it off.
-- Refunds are initiated inconsistently — sometimes via Admin Panel, sometimes via the finance team over WhatsApp — with no structured approval gate.
+- There is no audit trail on return approvals/pending returns/ action bias by CX agent against a return. 
+- Agents/lead/leadership team have no real-time visibility into the status of a return after they hand it off.
+- Refunds are initiated inconsistently — sometimes via Admin Panel, sometimes manually via the finance team over WhatsApp — with no structured approval gate.
 - There is no logging system for outbound retention calls, so the same customer can be called multiple times, or never at all.
 
 ### 2. No Structured Approval Hierarchy
