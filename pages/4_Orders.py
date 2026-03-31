@@ -299,6 +299,12 @@ if st.session_state.get("order_selected"):
             if nr == "REPEAT": tags_html += '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:8px;font-size:0.75rem;font-weight:600;margin-right:4px">🔄 Repeat</span>'
             if int(row.get("is_try_and_buy", 0)): tags_html += '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:8px;font-size:0.75rem;font-weight:600;margin-right:4px">🛍 T&B</span>'
 
+            # Compute these before columns so they can be referenced after
+            existing_ret = check_return_exists(order_id)
+            show_key     = f"ret_form_{order_id}"
+            if show_key not in st.session_state:
+                st.session_state[show_key] = False
+
             info_l, info_r = st.columns([1, 1.2])
             with info_l:
                 coupon_html = ""
@@ -318,7 +324,6 @@ if st.session_state.get("order_selected"):
                     unsafe_allow_html=True,
                 )
             with info_r:
-                existing_ret = check_return_exists(order_id)
                 if existing_ret:
                     r_st    = existing_ret["status"]
                     r_colour = RETURN_STATUS_COLOURS.get(r_st, "#444")
@@ -331,12 +336,7 @@ if st.session_state.get("order_selected"):
                         f'</div>',
                         unsafe_allow_html=True,
                     )
-
                 elif status.lower() == "delivered" and has_permission(role, "returns", "create"):
-                    show_key = f"ret_form_{order_id}"
-                    if show_key not in st.session_state:
-                        st.session_state[show_key] = False
-
                     if not st.session_state[show_key]:
                         st.markdown(
                             '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px">'
@@ -348,102 +348,115 @@ if st.session_state.get("order_selected"):
                             st.rerun()
                         st.markdown("</div>", unsafe_allow_html=True)
                     else:
-                        st.markdown("**↩ Initiate Return**")
-
-                        if not order_items_all.empty:
-                            item_options = {
-                                f"{it['item_name']} — ₹{it.get('price',0):,.0f}": {
-                                    "name": it["item_name"],
-                                    "sku": str(it.get("item_sku", "")),
-                                    "qty": int(it.get("quantity", 1)),
-                                    "unit_price": float(it.get("price", 0)),
-                                    "return_amount": float(it.get("Return Amount", it.get("price", 0))),
-                                }
-                                for _, it in order_items_all.iterrows()
-                            }
-                        else:
-                            item_options = {}
-
-                        if item_options:
-                            sel_labels     = st.multiselect("Select items *", list(item_options.keys()), key=f"ret_sel_{order_id}")
-                            selected_items = [item_options[l] for l in sel_labels]
-                        else:
-                            st.caption("No item data — enter manually.")
-                            if "ret_items" not in st.session_state:
-                                st.session_state["ret_items"] = [{"name": "", "sku": "", "qty": 1, "unit_price": 0.0, "return_amount": 0.0}]
-                            items_list = st.session_state["ret_items"]
-                            updated = []
-                            for i, item in enumerate(items_list):
-                                ic1, ic2, ic3, ic4, ic5 = st.columns([2.5, 1.5, 0.6, 0.9, 0.5])
-                                name = ic1.text_input("Name", value=item["name"], key=f"iname_{order_id}_{i}", label_visibility="collapsed", placeholder="Item name")
-                                sku  = ic2.text_input("SKU",  value=item["sku"],  key=f"isku_{order_id}_{i}",  label_visibility="collapsed", placeholder="SKU")
-                                qty  = ic3.number_input("Qty", value=item["qty"], min_value=1, key=f"iqty_{order_id}_{i}", label_visibility="collapsed")
-                                up   = ic4.number_input("₹", value=float(item["unit_price"]), min_value=0.0, key=f"iprice_{order_id}_{i}", label_visibility="collapsed")
-                                if not ic5.button("✕", key=f"irem_{order_id}_{i}"):
-                                    updated.append({"name": name, "sku": sku, "qty": qty, "unit_price": up, "return_amount": up * qty})
-                            if st.button("＋ Add Item", key=f"iadd_{order_id}"):
-                                updated.append({"name": "", "sku": "", "qty": 1, "unit_price": 0.0, "return_amount": 0.0})
-                            st.session_state["ret_items"] = updated
-                            selected_items = updated
-
-                        if selected_items or not item_options:
-                            ret_type = st.radio("Type *", ["return", "exchange"], format_func=lambda x: x.title(), horizontal=True, key=f"rtype_{order_id}")
-                            payment  = st.radio("Payment *", ["prepaid", "cod"], format_func=lambda x: x.upper(), horizontal=True, key=f"rpay_{order_id}")
-                            spoken   = st.radio("Spoken to customer? *", SPOKEN_OPTIONS, format_func=lambda x: SPOKEN_LABELS[x], horizontal=True, key=f"rspoken_{order_id}")
-                            pitched  = st.radio("Pitched exchange? *", PITCHED_OPTIONS, format_func=lambda x: PITCHED_LABELS[x], horizontal=True, key=f"rpitched_{order_id}")
-                            reason   = st.selectbox("Return reason *", REASON_OPTIONS, format_func=lambda x: REASON_LABELS[x], key=f"rreason_{order_id}")
-                            if ret_type == "return":
-                                ref_opts   = REFUND_SOURCE_OPTIONS.get(payment, ["wallet"])
-                                refund_src = st.selectbox("Refund source *", ref_opts, format_func=lambda x: REFUND_SOURCE_LABELS[x], key=f"rrefsrc_{order_id}")
-                            else:
-                                refund_src = None
-                                st.info("Exchange — no refund source.")
-                            pickup_date = st.date_input("Pickup date *", min_value=date.today(), key=f"rpdate_{order_id}")
-                            pickup_time = st.selectbox("Pickup time *", TIME_SLOTS, key=f"rptime_{order_id}")
-                            pickup_slot = f"{pickup_date.strftime('%d %b %Y')}, {pickup_time}"
-                            notes = st.text_area("Notes", height=60, key=f"rnotes_{order_id}")
-
-                            bc, bs = st.columns(2)
-                            if bc.button("Cancel", key=f"rcancel_{order_id}"):
-                                st.session_state[show_key] = False
-                                st.rerun()
-                            if bs.button("✓ Submit", key=f"rsubmit_{order_id}", type="primary"):
-                                items_to_use = selected_items if item_options else st.session_state.get("ret_items", [])
-                                valid = [it for it in items_to_use if str(it.get("name", "")).strip()]
-                                if not valid:
-                                    st.error("Select at least one item.")
-                                else:
-                                    new_id = create_return_with_approval(
-                                        order_id=order_id,
-                                        customer_id=str(row.get("user_id", "")),
-                                        customer_phone=phone,
-                                        payment_method=payment,
-                                        ret_type=ret_type,
-                                        items=valid,
-                                        spoken=spoken,
-                                        pitched=pitched if ret_type == "return" else "na",
-                                        reason=reason,
-                                        refund_source=refund_src,
-                                        pickup_slot=pickup_slot,
-                                        notes=notes,
-                                        agent_id=user.get("id"),
-                                        source="cx_portal",
-                                    )
-                                    st.success(f"RET-{new_id:03d} → Pending Approval.")
-                                    st.session_state[show_key] = False
-                                    st.session_state.pop("ret_items", None)
-                                    st.rerun()
-
-                elif status.lower() != "delivered":
+                        st.markdown(
+                            '<div style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:10px;padding:8px 12px">'
+                            '<span style="font-size:0.78rem;color:#6d28d9;font-weight:600">↩ Return form open below ↓</span>'
+                            '</div>',
+                            unsafe_allow_html=True,
+                        )
+                else:
                     st.markdown(
                         '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px">'
                         '<div style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">CX Actions</div>'
-                        '<span style="color:#64748b;font-size:0.83rem">Returns only available for delivered orders.</span>'
+                        '<span style="color:#64748b;font-size:0.83rem">Returns only for delivered orders.</span>'
                         '</div>',
                         unsafe_allow_html=True,
                     )
 
             st.markdown('<div style="margin-top:12px"></div>', unsafe_allow_html=True)
+
+            # ── Return form (full-width, below info cards) ────────────────────────
+            if st.session_state.get(f"ret_form_{order_id}") and not existing_ret and status.lower() == "delivered":
+                with st.container(border=True):
+                    st.markdown("#### ↩ Initiate Return")
+
+                    if not order_items_all.empty:
+                        item_options = {
+                            f"{it['item_name']} — ₹{it.get('price',0):,.0f}": {
+                                "name": it["item_name"],
+                                "sku": str(it.get("item_sku", "")),
+                                "qty": int(it.get("quantity", 1)),
+                                "unit_price": float(it.get("price", 0)),
+                                "return_amount": float(it.get("Return Amount", it.get("price", 0))),
+                            }
+                            for _, it in order_items_all.iterrows()
+                        }
+                    else:
+                        item_options = {}
+
+                    if item_options:
+                        sel_labels     = st.multiselect("Select items to return *", list(item_options.keys()), key=f"ret_sel_{order_id}")
+                        selected_items = [item_options[l] for l in sel_labels]
+                    else:
+                        st.caption("No item data — enter manually.")
+                        if "ret_items" not in st.session_state:
+                            st.session_state["ret_items"] = [{"name": "", "sku": "", "qty": 1, "unit_price": 0.0, "return_amount": 0.0}]
+                        items_list = st.session_state["ret_items"]
+                        updated = []
+                        for i, item in enumerate(items_list):
+                            ic1, ic2, ic3, ic4, ic5 = st.columns([2.5, 1.5, 0.6, 0.9, 0.5])
+                            nm  = ic1.text_input("Name", value=item["name"], key=f"iname_{order_id}_{i}", label_visibility="collapsed", placeholder="Item name")
+                            sku = ic2.text_input("SKU",  value=item["sku"],  key=f"isku_{order_id}_{i}",  label_visibility="collapsed", placeholder="SKU")
+                            qty = ic3.number_input("Qty", value=item["qty"], min_value=1, key=f"iqty_{order_id}_{i}", label_visibility="collapsed")
+                            up  = ic4.number_input("₹", value=float(item["unit_price"]), min_value=0.0, key=f"iprice_{order_id}_{i}", label_visibility="collapsed")
+                            if not ic5.button("✕", key=f"irem_{order_id}_{i}"):
+                                updated.append({"name": nm, "sku": sku, "qty": qty, "unit_price": up, "return_amount": up * qty})
+                        if st.button("＋ Add Item", key=f"iadd_{order_id}"):
+                            updated.append({"name": "", "sku": "", "qty": 1, "unit_price": 0.0, "return_amount": 0.0})
+                        st.session_state["ret_items"] = updated
+                        selected_items = updated
+
+                    form_cols = st.columns(3)
+                    ret_type    = form_cols[0].radio("Type *", ["return", "exchange"], format_func=lambda x: x.title(), horizontal=True, key=f"rtype_{order_id}")
+                    payment     = form_cols[1].radio("Payment *", ["prepaid", "cod"], format_func=lambda x: x.upper(), horizontal=True, key=f"rpay_{order_id}")
+                    spoken      = form_cols[2].radio("Spoken to customer? *", SPOKEN_OPTIONS, format_func=lambda x: SPOKEN_LABELS[x], horizontal=True, key=f"rspoken_{order_id}")
+
+                    form_cols2 = st.columns(3)
+                    pitched  = form_cols2[0].radio("Pitched exchange? *", PITCHED_OPTIONS, format_func=lambda x: PITCHED_LABELS[x], horizontal=True, key=f"rpitched_{order_id}")
+                    reason   = form_cols2[1].selectbox("Return reason *", REASON_OPTIONS, format_func=lambda x: REASON_LABELS[x], key=f"rreason_{order_id}")
+                    if ret_type == "return":
+                        ref_opts   = REFUND_SOURCE_OPTIONS.get(payment, ["wallet"])
+                        refund_src = form_cols2[2].selectbox("Refund source *", ref_opts, format_func=lambda x: REFUND_SOURCE_LABELS[x], key=f"rrefsrc_{order_id}")
+                    else:
+                        form_cols2[2].info("Exchange — no refund source.")
+                        refund_src = None
+
+                    form_cols3 = st.columns([1, 1, 2])
+                    pickup_date = form_cols3[0].date_input("Pickup date *", min_value=date.today(), key=f"rpdate_{order_id}")
+                    pickup_time = form_cols3[1].selectbox("Pickup time *", TIME_SLOTS, key=f"rptime_{order_id}")
+                    pickup_slot = f"{pickup_date.strftime('%d %b %Y')}, {pickup_time}"
+                    notes       = form_cols3[2].text_area("Notes (optional)", height=60, key=f"rnotes_{order_id}")
+
+                    bc, bs = st.columns(2)
+                    if bc.button("Cancel", key=f"rcancel_{order_id}"):
+                        st.session_state[f"ret_form_{order_id}"] = False
+                        st.rerun()
+                    if bs.button("✓ Submit Return", key=f"rsubmit_{order_id}", type="primary"):
+                        items_to_use = selected_items if item_options else st.session_state.get("ret_items", [])
+                        valid = [it for it in items_to_use if str(it.get("name", "")).strip()]
+                        if not valid:
+                            st.error("Select at least one item.")
+                        else:
+                            new_id = create_return_with_approval(
+                                order_id=order_id,
+                                customer_id=str(row.get("user_id", "")),
+                                customer_phone=phone,
+                                payment_method=payment,
+                                ret_type=ret_type,
+                                items=valid,
+                                spoken=spoken,
+                                pitched=pitched if ret_type == "return" else "na",
+                                reason=reason,
+                                refund_source=refund_src,
+                                pickup_slot=pickup_slot,
+                                notes=notes,
+                                agent_id=user.get("id"),
+                                source="cx_portal",
+                            )
+                            st.success(f"✓ RET-{new_id:03d} created → now in Pending Approval.")
+                            st.session_state[f"ret_form_{order_id}"] = False
+                            st.session_state.pop("ret_items", None)
+                            st.rerun()
 
             # ── Items table (full-width, admin-panel style) ───────────────────────
             if not order_items_all.empty:
