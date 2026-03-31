@@ -339,21 +339,48 @@ def seed():
 
     # ── Manual & extra refunds (all statuses) ─────────────────────────────────
     extra_refunds = [
-        # (order_id, customer_id, customer_phone, order_amount, amount, method, refund_type, coupon, notes, status, return_id)
-        ("ORD-20410", "C001", "+91 98110 12345", 1499.0, 924.0,  "wallet",        "return_app",        None,     "Customer confirmed return.", "pending_approval", None),
-        ("ORD-20552", "C002", "+91 97300 54321", 2499.0, 1099.0, "source_refund", "return_app",        None,     "Exchange declined by customer.", "pending_approval", None),
-        ("ORD-20613", "C003", "+91 99990 11223",  899.0,  699.0, "cod_wallet",    "return_app",        None,     "COD order — wallet credit.", "pending_approval", None),
-        ("ORD-20784", "C004", "+91 98765 43210", 7995.0, 3486.0, "wallet",        "admin_panel",       "BABY20", "Initiated via admin.", "pending", None),
-        ("ORD-20830", "C005", "+91 98001 67890", 1499.0,  766.0, "source_refund", "chatbot",           None,     "Chatbot initiated refund.", "pending", None),
-        ("ORD-20121", "C006", "+91 97112 34567",  396.0,  332.0, "wallet",        "return_app",        None,     None, "pending", None),
-        ("ORD-20234", "C007", "+91 98200 11111",  899.0,  699.0, "source_refund", "tnb",               None,     "T&B refund.", "processed", None),
-        ("ORD-20345", "C008", "+91 99887 66554", 2799.0, 2799.0, "wallet",        "oos",               None,     "Item OOS — full refund.", "processed", None),
-        ("ORD-20456", "C001", "+91 98110 12345", 1499.0,  924.0, "wallet",        "cancelled_prepaid", None,     "Order cancelled before dispatch.", "completed", None),
-        ("ORD-20567", "C002", "+91 97300 54321",  229.0,  229.0, "cod_wallet",    "manual",            None,     "Manual goodwill refund.", "completed", None),
-        ("ORD-20678", "C003", "+91 99990 11223",  399.0,  398.0, "wallet",        "return_app",        None,     "Rejected: duplicate request.", "failed", None),
-        ("ORD-20789", "C004", "+91 98765 43210", 1099.0, 1099.0, "source_refund", "admin_panel",       None,     "Rejected: no valid reason.", "failed", None),
+        # (order_id, customer_id, customer_phone, order_amount, amount, method, refund_type, coupon, notes, status)
+        # pending_approval (6)
+        ("ORD-20410", "C001", "+91 98110 12345", 1499.0,  924.0, "wallet",        "return_app",        None,       "Customer confirmed return.",          "pending_approval"),
+        ("ORD-20552", "C002", "+91 97300 54321", 2499.0, 1099.0, "source_refund", "return_app",        None,       "Exchange declined by customer.",      "pending_approval"),
+        ("ORD-20613", "C003", "+91 99990 11223",  899.0,  699.0, "cod_wallet",    "return_app",        None,       "COD order — wallet credit.",          "pending_approval"),
+        ("ORD-25001", "C005", "+91 98001 67890",  449.0,  449.0, "wallet",        "oos",               None,       "Item went OOS — full refund.",        "pending_approval"),
+        ("ORD-25002", "C006", "+91 97112 34567", 1299.0,  799.0, "source_refund", "admin_panel",       "BACK15",   "Admin initiated return refund.",      "pending_approval"),
+        ("ORD-25003", "C007", "+91 98200 11111",  599.0,  549.0, "cod_wallet",    "chatbot",           None,       "Chatbot-initiated COD refund.",       "pending_approval"),
+        # pending (8)
+        ("ORD-20784", "C004", "+91 98765 43210", 7995.0, 3486.0, "wallet",        "admin_panel",       "BABY20",   "Initiated via admin.",                "pending"),
+        ("ORD-20830", "C005", "+91 98001 67890", 1499.0,  766.0, "source_refund", "chatbot",           None,       "Chatbot initiated refund.",           "pending"),
+        ("ORD-20121", "C006", "+91 97112 34567",  396.0,  332.0, "wallet",        "return_app",        None,       None,                                  "pending"),
+        ("ORD-25004", "C008", "+91 99887 66554", 3299.0, 2999.0, "wallet",        "cancelled_prepaid", None,       "Order cancelled before dispatch.",    "pending"),
+        ("ORD-25005", "C001", "+91 98110 12345", 1799.0, 1799.0, "source_refund", "return_app",        "WELCOME",  "Wrong item delivered.",               "pending"),
+        ("ORD-25006", "C002", "+91 97300 54321",  549.0,  499.0, "wallet",        "oos",               None,       "Item unavailable at store.",          "pending"),
+        ("ORD-25007", "C003", "+91 99990 11223",  999.0,  799.0, "cod_wallet",    "manual",            None,       "Partial goodwill refund.",            "pending"),
+        ("ORD-25008", "C004", "+91 98765 43210", 2499.0, 2499.0, "wallet",        "tnb",               None,       "T&B full refund.",                    "pending"),
+        # processed (6)
+        ("ORD-20234", "C007", "+91 98200 11111",  899.0,  699.0, "source_refund", "tnb",               None,       "T&B refund.",                         "processed"),
+        ("ORD-20345", "C008", "+91 99887 66554", 2799.0, 2799.0, "wallet",        "oos",               None,       "Item OOS — full refund.",             "processed"),
+        ("ORD-25009", "C005", "+91 98001 67890",  349.0,  299.0, "wallet",        "admin_panel",       None,       "Processing via Razorpay.",            "processed"),
+        ("ORD-25010", "C006", "+91 97112 34567", 1599.0, 1199.0, "source_refund", "return_app",        "BABY20",   "Source refund initiated.",            "processed"),
+        ("ORD-25011", "C007", "+91 98200 11111",  749.0,  749.0, "wallet",        "cancelled_prepaid", None,       "Cancelled — wallet credit queued.",   "processed"),
+        ("ORD-25012", "C001", "+91 98110 12345", 4999.0, 4499.0, "source_refund", "manual",            None,       "High-value manual — under review.",   "processed"),
+        # completed (10)
+        ("ORD-20456", "C001", "+91 98110 12345", 1499.0,  924.0, "wallet",        "cancelled_prepaid", None,       "Order cancelled before dispatch.",    "completed"),
+        ("ORD-20567", "C002", "+91 97300 54321",  229.0,  229.0, "cod_wallet",    "manual",            None,       "Manual goodwill refund.",             "completed"),
+        ("ORD-25013", "C003", "+91 99990 11223",  599.0,  599.0, "wallet",        "return_app",        None,       "Return completed — wallet credited.", "completed"),
+        ("ORD-25014", "C004", "+91 98765 43210", 1299.0,  999.0, "source_refund", "tnb",               None,       "T&B — source refund completed.",      "completed"),
+        ("ORD-25015", "C005", "+91 98001 67890",  449.0,  449.0, "wallet",        "oos",               None,       "OOS refund completed.",               "completed"),
+        ("ORD-25016", "C006", "+91 97112 34567",  899.0,  699.0, "cod_wallet",    "return_app",        "WELCOME",  "COD wallet completed.",               "completed"),
+        ("ORD-25017", "C007", "+91 98200 11111",  349.0,  349.0, "wallet",        "manual",            None,       "Goodwill credit applied.",            "completed"),
+        ("ORD-25018", "C008", "+91 99887 66554", 1999.0, 1799.0, "source_refund", "admin_panel",       "BACK15",   "Admin refund completed.",             "completed"),
+        ("ORD-25019", "C001", "+91 98110 12345", 3499.0, 3499.0, "wallet",        "cancelled_prepaid", None,       "Bulk order cancelled — full refund.", "completed"),
+        ("ORD-25020", "C002", "+91 97300 54321",  649.0,  549.0, "wallet",        "return_app",        None,       "Partial return — wallet credited.",   "completed"),
+        # failed (4)
+        ("ORD-20678", "C003", "+91 99990 11223",  399.0,  398.0, "wallet",        "return_app",        None,       "Rejected: duplicate request.",        "failed"),
+        ("ORD-20789", "C004", "+91 98765 43210", 1099.0, 1099.0, "source_refund", "admin_panel",       None,       "Rejected: no valid reason.",          "failed"),
+        ("ORD-25021", "C005", "+91 98001 67890",  799.0,  799.0, "wallet",        "manual",            None,       "Rejected: outside refund window.",    "failed"),
+        ("ORD-25022", "C006", "+91 97112 34567",  499.0,  399.0, "cod_wallet",    "return_app",        None,       "Rejected: item not returned.",        "failed"),
     ]
-    for (oid, cid, phone, ord_amt, amt, method, rtype, coupon, notes, status, ret_id) in extra_refunds:
+    for (oid, cid, phone, ord_amt, amt, method, rtype, coupon, notes, status) in extra_refunds:
         completed_at = random_dt(3) if status == "completed" else None
         conn.execute(
             """INSERT INTO refunds

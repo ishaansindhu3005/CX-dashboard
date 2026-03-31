@@ -52,21 +52,21 @@ section[data-testid="stSidebar"] label {
 }
 [data-testid="stSidebarNavItems"] a {
     border-radius: 8px !important;
-    color: #c4b5fd !important;
+    color: #e8d5e8 !important;
     font-weight: 500 !important;
     padding: 6px 12px !important;
     margin: 1px 0 !important;
     transition: background 0.15s ease !important;
 }
 [data-testid="stSidebarNavItems"] a:hover {
-    background: rgba(139,92,246,0.2) !important;
+    background: rgba(200,162,200,0.18) !important;
     color: #fff !important;
 }
 [data-testid="stSidebarNavItems"] [aria-current="page"] a,
 [data-testid="stSidebarNavItems"] a[aria-current="page"] {
-    background: rgba(139,92,246,0.3) !important;
+    background: rgba(180,130,180,0.28) !important;
     color: #fff !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
 }
 section[data-testid="stSidebar"] .stButton > button {
     background: rgba(255,255,255,0.08) !important;

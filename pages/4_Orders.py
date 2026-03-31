@@ -28,11 +28,13 @@ ORDERS_COLS = [
     "order_amount", "coupon_code", "coupon_discount_amount",
     "order_status", "created_at", "Is Return", "return_amount",
     "FINAL STORE", "NEW_REPEAT", "is_try_and_buy",
+    "GrossAmount",
 ]
 DETAILS_COLS = [
     "order_id", "item_name", "item_sku", "price", "quantity",
     "is_return", "Return Amount", "store_id", "Brand",
     "SellingPriceX_Quantity", "discount_on_item", "is_rx",
+    "isGift_Price", "Coupon Discount While Ordering",
 ]
 
 ORDER_STATUS_COLOURS = {
@@ -458,16 +460,15 @@ if st.session_state.get("order_selected"):
                             st.session_state.pop("ret_items", None)
                             st.rerun()
 
-            # ── Items table (full-width, admin-panel style) ───────────────────────
+            # ── Items table + Order Summary ───────────────────────────────────────
             if not order_items_all.empty:
                 if "store_id" in order_items_all.columns:
                     store_ids = sorted(order_items_all["store_id"].dropna().unique().tolist())
                 else:
                     store_ids = ["—"]
 
-                # Use FINAL STORE name for tab labels
                 if len(store_ids) == 1:
-                    tab_labels = [store]
+                    tab_labels = [store if store != "—" else "Items"]
                 else:
                     tab_labels = [f"{store} · Part {i+1}" for i, _ in enumerate(store_ids)]
 
@@ -475,14 +476,11 @@ if st.session_state.get("order_selected"):
 
                 for tab_obj, sid in zip(store_tabs, store_ids):
                     with tab_obj:
-                        if "store_id" in order_items_all.columns and sid != "—":
-                            grp = order_items_all[order_items_all["store_id"] == sid]
-                        else:
-                            grp = order_items_all
+                        grp = order_items_all[order_items_all["store_id"] == sid] if ("store_id" in order_items_all.columns and sid != "—") else order_items_all
 
-                        # Header
-                        th = st.columns([0.3, 3.8, 1.1, 0.4, 0.8, 0.9, 0.85, 0.85])
-                        for col, lbl in zip(th, ["#", "Item Details", "SKU", "Qty", "Price", "Sell Price", "Discount", "Status"]):
+                        # ── Item rows table ───────────────────────────────────────
+                        th = st.columns([0.3, 4.2, 1.2, 0.4, 0.85, 0.95, 0.85])
+                        for col, lbl in zip(th, ["#", "Item Details", "SKU", "Qty", "Price", "Sell Price", "Discount"]):
                             col.markdown(
                                 f'<span style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em">{lbl}</span>',
                                 unsafe_allow_html=True,
@@ -490,47 +488,87 @@ if st.session_state.get("order_selected"):
                         st.markdown('<hr style="margin:4px 0 6px 0;border-color:#ede9fe">', unsafe_allow_html=True)
 
                         for i, (_, it) in enumerate(grp.iterrows(), 1):
-                            tr = st.columns([0.3, 3.8, 1.1, 0.4, 0.8, 0.9, 0.85, 0.85])
-                            tr[0].markdown(f'<span style="color:#94a3b8;font-size:0.85rem">{i}</span>', unsafe_allow_html=True)
+                            tr    = st.columns([0.3, 4.2, 1.2, 0.4, 0.85, 0.95, 0.85])
                             brand = str(it.get("Brand", "") or "")
                             name  = str(it.get("item_name", ""))
                             qty_v = int(it.get("quantity", 1))
+                            mrp   = float(it.get("price", 0))
+                            spxq  = float(it.get("SellingPriceX_Quantity", 0) or 0)
+                            sell  = spxq / qty_v if spxq and qty_v else mrp
+                            disc  = float(it.get("discount_on_item", 0) or 0)
+                            is_ret_item = int(it.get("is_return", 0))
+                            is_rx       = int(it.get("is_rx", 0))
+
+                            ret_tag = ""
+                            if is_ret_item:
+                                ret_tag = ' &nbsp;<span style="background:#fee2e2;color:#c62828;padding:1px 6px;border-radius:6px;font-size:0.68rem;font-weight:600">↩ Returned</span>'
+                            elif is_rx:
+                                ret_tag = ' &nbsp;<span style="background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:6px;font-size:0.68rem;font-weight:600">Rx</span>'
+
+                            tr[0].markdown(f'<span style="color:#94a3b8;font-size:0.82rem">{i}</span>', unsafe_allow_html=True)
                             tr[1].markdown(
-                                f'<div style="line-height:1.4">'
-                                f'<span style="font-weight:600;font-size:0.85rem">{name}</span>'
-                                + (f'<br><span style="font-size:0.72rem;color:#94a3b8">{brand}</span>' if brand else "")
-                                + f'<br><span style="font-size:0.72rem;color:#64748b">1 × ₹{it.get("price",0):,.0f}</span>'
+                                f'<div style="line-height:1.5">'
+                                f'<span style="font-weight:600;font-size:0.88rem">{name}</span>{ret_tag}'
+                                + (f'<br><span style="font-size:0.73rem;color:#94a3b8">{brand}</span>' if brand else "")
                                 + f'</div>',
                                 unsafe_allow_html=True,
                             )
                             tr[2].markdown(
-                                f'<code style="font-size:0.72rem;background:#f1f5f9;padding:2px 5px;border-radius:4px">{it.get("item_sku","—")}</code>',
+                                f'<code style="font-size:0.73rem;background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#475569">{it.get("item_sku","—")}</code>',
                                 unsafe_allow_html=True,
                             )
-                            tr[3].markdown(f'<span style="font-size:0.85rem">{qty_v}</span>', unsafe_allow_html=True)
-                            tr[4].markdown(f'<span style="font-size:0.85rem">₹{it.get("price",0):,.0f}</span>', unsafe_allow_html=True)
-                            spxq = float(it.get("SellingPriceX_Quantity", 0) or 0)
-                            sell = spxq / qty_v if spxq and qty_v else float(it.get("price", 0))
-                            tr[5].markdown(f'<span style="font-size:0.85rem">₹{sell:,.0f}</span>', unsafe_allow_html=True)
-                            disc = float(it.get("discount_on_item", 0) or 0)
-                            disc_html = f'<span style="color:#dc2626;font-size:0.85rem">−₹{disc:,.0f}</span>' if disc else '<span style="color:#94a3b8;font-size:0.85rem">—</span>'
+                            tr[3].markdown(f'<span style="font-size:0.88rem;color:#334155">{qty_v}</span>', unsafe_allow_html=True)
+                            tr[4].markdown(f'<span style="font-size:0.88rem;color:#334155">₹{mrp:,.0f}</span>', unsafe_allow_html=True)
+                            tr[5].markdown(f'<span style="font-size:0.88rem;color:#334155">₹{sell:,.0f}</span>', unsafe_allow_html=True)
+                            disc_html = f'<span style="color:#dc2626;font-size:0.88rem">−₹{disc:,.0f}</span>' if disc else '<span style="color:#94a3b8;font-size:0.88rem">0</span>'
                             tr[6].markdown(disc_html, unsafe_allow_html=True)
-                            is_ret_item = int(it.get("is_return", 0))
-                            is_rx       = int(it.get("is_rx", 0))
-                            if is_ret_item:
-                                tr[7].markdown(
-                                    '<span style="background:#fee2e2;color:#c62828;padding:2px 7px;border-radius:8px;font-size:0.72rem;font-weight:600">↩ Returned</span>',
-                                    unsafe_allow_html=True,
-                                )
-                            elif is_rx:
-                                tr[7].markdown(
-                                    '<span style="background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:8px;font-size:0.72rem;font-weight:600">Rx</span>',
-                                    unsafe_allow_html=True,
-                                )
-                            else:
-                                tr[7].markdown('<span style="color:#94a3b8;font-size:0.85rem">—</span>', unsafe_allow_html=True)
 
-                        st.markdown('<hr style="margin:6px 0 0 0;border-color:#ede9fe">', unsafe_allow_html=True)
+                        st.markdown('<hr style="margin:8px 0 12px 0;border-color:#ede9fe">', unsafe_allow_html=True)
+
+                        # ── Order Summary ─────────────────────────────────────────
+                        items_price    = grp.apply(lambda r: float(r.get("price", 0)) * int(r.get("quantity", 1)), axis=1).sum()
+                        subtotal       = grp["SellingPriceX_Quantity"].apply(lambda x: float(x or 0)).sum()
+                        item_discount  = grp["discount_on_item"].apply(lambda x: float(x or 0)).sum()
+                        coupon_disc    = float(row.get("coupon_discount_amount", 0) or 0)
+                        gift_fee       = grp["isGift_Price"].apply(lambda x: float(x or 0)).sum() if "isGift_Price" in grp.columns else 0.0
+                        total          = float(row.get("order_amount", 0) or 0)
+
+                        def summary_row(label, value, colour="#334155", bold=False, separator=False):
+                            sign = ""
+                            if value < 0 or (label.startswith("Discount") or label.startswith("Coupon")):
+                                abs_val = abs(value)
+                                val_html = f'<span style="color:#dc2626">−₹{abs_val:,.0f}</span>'
+                            elif label.startswith("Delivery") or label.startswith("Gift"):
+                                val_html = f'<span style="color:#16a34a">+₹{abs(value):,.0f}</span>'
+                            else:
+                                val_html = f'<span style="color:{colour};{"font-weight:700;font-size:0.95rem" if bold else ""}">'
+                                val_html += f'₹{abs(value):,.0f}</span>'
+                            lbl_style = f'font-size:{"0.92rem" if bold else "0.83rem"};{"font-weight:700;" if bold else ""}color:{"#1e1e2e" if bold else "#64748b"}'
+                            sep_style = 'border-top:1px solid #ede9fe;margin-top:6px;padding-top:8px;' if separator else ''
+                            return (
+                                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                                f'padding:3px 0;{sep_style}">'
+                                f'<span style="{lbl_style}">{label}</span>'
+                                f'{val_html}'
+                                f'</div>'
+                            )
+
+                        summary_html = (
+                            '<div style="background:#faf5ff;border:1px solid #ede9fe;border-radius:12px;padding:16px 20px;max-width:380px;margin-left:auto">'
+                            '<div style="font-size:0.72rem;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Order Summary</div>'
+                            + summary_row("Items Price", items_price)
+                            + summary_row("Subtotal", subtotal)
+                            + summary_row("Discount", item_discount)
+                            + summary_row("Coupon Discount", coupon_disc)
+                            + summary_row("Delivery Fee", 0)
+                            + summary_row("Gift Fee", gift_fee)
+                            + summary_row("Total", total, colour="#1e1e2e", bold=True, separator=True)
+                            + summary_row("Wallet Amount", 0)
+                            + summary_row("Payable Amount", total, colour="#6d28d9", bold=True)
+                            + '</div>'
+                        )
+                        st.markdown(summary_html, unsafe_allow_html=True)
+
             else:
                 st.info("No item data available for this order.")
 
