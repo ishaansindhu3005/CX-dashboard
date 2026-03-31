@@ -61,19 +61,9 @@ Controls who can log in and what they can see and do.
   - The Ozi CX wordmark.
   - The agent's initials in a circular avatar, colour-coded by role (Admin = red, Supervisor = orange, CX Lead = purple, Agent = blue, Warehouse = green).
   - A role badge (e.g. "Supervisor").
-  - An availability toggle — agents mark themselves Available or Unavailable for the shift. When marked Available, unassigned calls are automatically distributed to them.
+  - An availability toggle — agents mark themselves Available or Unavailable for the shift. When marked Available, unassigned calls and short pick cases are automatically distributed to them.
   - Navigation to all modules they have access to.
   - A logout button.
-
-**Role Hierarchy (5 roles):**
-
-| Role | Who | What they can do |
-|------|-----|-----------------|
-| Admin | Ishaan, ops heads | Everything — including user management, refund amount overrides, all approvals |
-| Supervisor | Vaibhav | All approvals, reassignments, team performance view |
-| CX Lead | Bhagwana | Return approvals, refund approvals, manual creates |
-| Agent | Bhawana, Priya, Arjun | View and action assigned returns, calls, short picks |
-| Warehouse User | Kusharg, Manpreet | Send approved returns to Pidge for pickup |
 
 **Permission rules (key examples):**
 - Only CX Leads and above can approve or reject a return.
