@@ -50,20 +50,40 @@ section[data-testid="stSidebar"] .stMarkdown div,
 section[data-testid="stSidebar"] label {
     color: #e2e8f0 !important;
 }
-[data-testid="stSidebarNavItems"] a {
-    border-radius: 8px !important;
+/* ── Sidebar nav items — nuke all text to mauve/white ──── */
+[data-testid="stSidebarNavItems"] a,
+[data-testid="stSidebarNavItems"] a span,
+[data-testid="stSidebarNavItems"] a p,
+[data-testid="stSidebarNavItems"] a li,
+[data-testid="stSidebarNavItems"] a div,
+[data-testid="stSidebarNavItems"] li a,
+[data-testid="stSidebarNavItems"] li span,
+section[data-testid="stSidebar"] nav a,
+section[data-testid="stSidebar"] nav a span,
+section[data-testid="stSidebar"] nav li span,
+section[data-testid="stSidebar"] [data-testid="stSidebarNavItems"] * {
     color: #e8d5e8 !important;
+    border-radius: 8px !important;
     font-weight: 500 !important;
-    padding: 6px 12px !important;
-    margin: 1px 0 !important;
     transition: background 0.15s ease !important;
 }
-[data-testid="stSidebarNavItems"] a:hover {
+[data-testid="stSidebarNavItems"] a {
+    padding: 6px 12px !important;
+    margin: 1px 0 !important;
+}
+[data-testid="stSidebarNavItems"] a:hover,
+[data-testid="stSidebarNavItems"] a:hover span,
+[data-testid="stSidebarNavItems"] a:hover p,
+[data-testid="stSidebarNavItems"] a:hover div {
     background: rgba(200,162,200,0.18) !important;
     color: #fff !important;
 }
 [data-testid="stSidebarNavItems"] [aria-current="page"] a,
-[data-testid="stSidebarNavItems"] a[aria-current="page"] {
+[data-testid="stSidebarNavItems"] a[aria-current="page"],
+[data-testid="stSidebarNavItems"] [aria-current="page"] a span,
+[data-testid="stSidebarNavItems"] [aria-current="page"] a p,
+[data-testid="stSidebarNavItems"] [aria-current="page"] span,
+[data-testid="stSidebarNavItems"] [aria-selected="true"] span {
     background: rgba(180,130,180,0.28) !important;
     color: #fff !important;
     font-weight: 700 !important;
