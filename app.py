@@ -194,6 +194,23 @@ hr { border-color: #ede9fe !important; }
     border-radius: 12px !important;
     padding: 1rem 1.25rem !important;
 }
+
+/* ── Table header label ────────────────────────────────── */
+.tbl-hdr {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.07em !important;
+}
+
+/* ── Detail panel container ────────────────────────────── */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: 14px !important;
+    border-color: #ede9fe !important;
+    box-shadow: 0 2px 12px rgba(109,40,217,0.06) !important;
+    padding: 4px 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
