@@ -409,3 +409,33 @@ with open('flow_diagram.svg', 'w') as f:
     f.write(svg)
 
 print(f"Generated flow_diagram.svg ({W}x{actual_H}px, {len(svg):,} bytes)")
+
+# ── Auto-generate PNG ────────────────────────────────────────────
+import subprocess, os, sys
+from PIL import Image
+import numpy as np
+
+svg_path = os.path.abspath('flow_diagram.svg')
+png_tmp  = svg_path + '.png'
+png_out  = os.path.abspath('flow_diagram.png')
+
+# Render at 2× the diagram width so text stays sharp
+render_size = W * 2
+
+result = subprocess.run(
+    ['qlmanage', '-t', '-s', str(render_size), '-o', os.path.dirname(svg_path), svg_path],
+    capture_output=True, text=True
+)
+if result.returncode != 0 or not os.path.exists(png_tmp):
+    print("⚠  PNG generation failed — SVG is still valid and can be opened directly.")
+    print(result.stderr[:300])
+    sys.exit(0)
+
+img = Image.open(png_tmp)
+arr = np.array(img)
+non_white = (arr < 240).any(axis=2).any(axis=1)
+last_row  = int(non_white.nonzero()[0][-1]) + 10
+cropped   = img.crop((0, 0, img.width, last_row))
+cropped.save(png_out, optimize=True)
+os.remove(png_tmp)
+print(f"Generated flow_diagram.png  ({cropped.width}×{cropped.height}px, {os.path.getsize(png_out)//1024}KB)")
