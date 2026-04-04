@@ -246,8 +246,8 @@ Sees all form details submitted by the agent (read-only). Return IDs here origin
 - Manual return button at the top of Returns.
 
 CX Lead can either:
-- ✅ **Approve** → moves to **Pending Pickup**.
-- ❌ **Reject** → must provide a written reason → moves to **Cancelled**.
+- **Approve** → moves to **Pending Pickup**.
+- **Reject** → must provide a written reason → moves to **Cancelled**.
 
 Agents see a *"Submitted — awaiting CX Lead approval"* message and cannot edit the return.
 
@@ -356,8 +356,8 @@ Enter an Order ID → system auto-fills customer phone, customer ID, and order a
 
 **Two submission options:**
 
-- 💾 **Save Draft** — saves progress without marking call complete. Agent can return to it.
-- ✅ **Submit** — marks the call Completed.
+- **Save Draft** — saves progress without marking call complete. Agent can return to it.
+- **Submit** — marks the call Completed.
 
 ---
 
@@ -404,8 +404,8 @@ Store code · Date range.
 
 **Two submission options:**
 
-- 💾 **Save Draft.**
-- ✅ **Submit** — marks Completed.
+- **Save Draft.**
+- **Submit** — marks Completed.
 
 > Admin/Supervisor can edit a completed record (flagged with an admin-edit marker for audit purposes).
 
