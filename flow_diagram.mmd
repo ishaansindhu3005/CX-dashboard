@@ -1,0 +1,186 @@
+flowchart TD
+    classDef cust   fill:#fef9c3,stroke:#ca8a04,color:#78350f
+    classDef agent  fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    classDef lead   fill:#f3e8ff,stroke:#8b5cf6,color:#4c1d95
+    classDef wh     fill:#d1fae5,stroke:#10b981,color:#064e3b
+    classDef sup    fill:#ffedd5,stroke:#f97316,color:#7c2d12
+    classDef sys    fill:#f1f5f9,stroke:#64748b,color:#1e293b
+    classDef ok     fill:#d1fae5,stroke:#059669,color:#064e3b,font-weight:bold
+    classDef err    fill:#fee2e2,stroke:#ef4444,color:#7f1d1d,font-weight:bold
+    classDef dec    fill:#fdf4ff,stroke:#a855f7,color:#4c1d95
+    classDef entry  fill:#1e1b4b,stroke:#6d28d9,color:#ffffff,font-weight:bold
+
+    %% ── ENTRY POINTS ────────────────────────────────────────────────────
+
+    E1(["🛍️ Customer Issue
+    Wrong product · Damaged · Missing item"]):::entry
+
+    E2(["🔄 Failed / RTO Order
+    Cancelled · Undelivered · Payment failed"]):::entry
+
+    E3(["📦 Warehouse Short-Pick
+    Item cannot be fulfilled"]):::entry
+
+    %% ── RETURNS & EXCHANGE ──────────────────────────────────────────────
+
+    subgraph RET["↩  Returns & Exchange Lifecycle"]
+        direction TD
+
+        R1["Return flagged
+        App · Chatbot · Orders page · Manual"]:::sys
+
+        R2["⏳ Pending Action
+        Agent fills form:
+        Type · Reason · Refund source
+        Pickup date & time slot · Notes"]:::agent
+
+        R3["⏳ Pending Approval
+        CX Lead reviews agent submission
+        Agent sees read-only status"]:::lead
+
+        R4{{"Approve or Reject?"}}:::dec
+
+        R5["📍 Pickup Status
+        Pidge order created
+        Rider assigned & en route"]:::wh
+
+        R6(["✅ Return Completed
+        Item collected by rider"]):::ok
+
+        R7(["❌ Cancelled
+        Rejection reason logged"]):::err
+
+        R8{{"Return or Exchange?"}}:::dec
+
+        RX(["🔄 Exchange Arranged
+        No refund triggered"]):::ok
+    end
+
+    R1 --> R2 --> R3 --> R4
+    R4 -- "✅ Approve — CX Lead" --> R5
+    R4 -- "❌ Reject — CX Lead or customer via Pidge" --> R7
+    R5 --> R6 --> R8
+    R8 -- "Exchange" --> RX
+    R8 -- "Return" --> RF1
+
+    %% ── REFUNDS ─────────────────────────────────────────────────────────
+
+    subgraph REF["💰  Refunds Flow"]
+        direction TD
+
+        RF1["Refund auto-created by system
+        Linked to completed return"]:::sys
+
+        RF_MAN["Manual refund
+        CX Lead enters Order ID
+        System auto-fills customer & amount"]:::lead
+
+        RF2{{"Prepaid or COD?"}}:::dec
+
+        RF3A["Wallet credit only
+        COD — no source refund possible"]:::wh
+
+        RF3B["Wallet or source refund
+        Prepaid — customer's choice"]:::agent
+
+        RF4["⏳ Pending
+        Admin / Supervisor fills:
+        RRN · Payment ID · Refund source"]:::sup
+
+        RF5["🔄 Processed
+        Payment initiated by finance / system"]:::sys
+
+        RF6(["✅ Completed
+        Customer receives refund"]):::ok
+
+        RF7(["❌ Failed"]):::err
+    end
+
+    RF_MAN --> RF2
+    RF1 --> RF2
+    RF2 -- "COD" --> RF3A --> RF4
+    RF2 -- "Prepaid" --> RF3B --> RF4
+    RF4 --> RF5 --> RF6
+    RF5 --> RF7
+
+    %% ── CRM CALLING ─────────────────────────────────────────────────────
+
+    subgraph CRM["📞  CRM Calling  —  Retention"]
+        direction TD
+
+        C1["Failed / RTO order enters call queue
+        Auto or manual entry"]:::sys
+
+        C2["Auto-assigned when agent marks Available
+        Round-robin distribution"]:::sys
+
+        C3["In Progress
+        Agent dials customer"]:::agent
+
+        C4{{"Reached customer?"}}:::dec
+
+        C5["💾 Save Draft
+        Agent continues later"]:::agent
+
+        C6["Log outcome:
+        Drop-off reason · Notes
+        Reordered: Yes / No"]:::agent
+
+        C7(["✅ Call Completed"]):::ok
+
+        C8["Supervisor / Admin
+        can reassign to different agent"]:::sup
+    end
+
+    C1 --> C2 --> C3 --> C4
+    C4 -- "Yes / Attempted" --> C6 --> C7
+    C4 -- "No — try again later" --> C5 --> C3
+    C8 -.->|reassign| C2
+
+    %% ── SHORT PICKS ─────────────────────────────────────────────────────
+
+    subgraph SP["📦  Short Picks  —  WH → CX Handoff"]
+        direction TD
+
+        S1["WH short-pick confirmed
+        OMS creates record automatically"]:::wh
+
+        S2["Assigned to CX agent
+        Round-robin when agent is Available"]:::sys
+
+        S3["In Progress
+        Agent calls customer
+        Explains short-pick situation"]:::agent
+
+        S4{{"Customer response?"}}:::dec
+
+        S5["💾 Save Draft
+        Return to call later"]:::agent
+
+        S6A["Refund Initiated
+        Passed to Refunds module"]:::lead
+
+        S6B["Replacement Arranged
+        WH sends alternate item"]:::wh
+
+        S6C["Partial refund · Customer cancelled
+        No action needed · Other"]:::sup
+
+        S7(["✅ Short Pick Completed
+        Resolution & notes logged"]):::ok
+
+        S8["Supervisor / Admin
+        can reassign to different agent"]:::sup
+    end
+
+    S1 --> S2 --> S3 --> S4
+    S4 -- "Wants refund" --> S6A --> S7
+    S4 -- "Wants replacement" --> S6B --> S7
+    S4 -- "Other / Accepted" --> S6C --> S7
+    S4 -- "No response" --> S5 --> S3
+    S8 -.->|reassign| S2
+
+    %% ── CROSS-MODULE ENTRY LINKS ────────────────────────────────────────
+    E1 --> R1
+    E2 --> C1
+    E3 --> S1
